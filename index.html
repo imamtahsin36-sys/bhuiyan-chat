@@ -1,0 +1,378 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<title>BHUIYAN CHAT</title>
+
+<style>
+/* --- THEME ENGINE --- */
+:root { 
+    --primary: #9333ea; --accent: #c084fc; --glass: rgba(255, 255, 255, 0.1);
+    --bg: radial-gradient(circle at 20% 20%, rgba(138,43,226,0.3), transparent 40%), linear-gradient(135deg, #0a0a0a 0%, #140019 100%);
+}
+[data-theme="cyber"] { --primary: #00f2ff; --accent: #00f2ff; --bg: linear-gradient(135deg, #000428, #004e92); }
+[data-theme="sunset"] { --primary: #f97316; --accent: #fdba74; --bg: linear-gradient(135deg, #431407, #7c2d12); }
+[data-theme="forest"] { --primary: #22c55e; --accent: #86efac; --bg: linear-gradient(135deg, #064e3b, #022c22); }
+[data-theme="ruby"] { --primary: #e11d48; --accent: #fb7185; --bg: linear-gradient(135deg, #4c0519, #881337); }
+[data-theme="ocean"] { --primary: #0ea5e9; --accent: #7dd3fc; --bg: linear-gradient(135deg, #0c4a6e, #082f49); }
+[data-theme="gold"] { --primary: #eab308; --accent: #fde047; --bg: linear-gradient(135deg, #422006, #713f12); }
+[data-theme="midnight"] { --primary: #6366f1; --accent: #a5b4fc; --bg: linear-gradient(135deg, #1e1b4b, #312e81); }
+[data-theme="lavender"] { --primary: #a855f7; --accent: #d8b4fe; --bg: linear-gradient(135deg, #2e1065, #4c1d95); }
+[data-theme="slate"] { --primary: #64748b; --accent: #cbd5e1; --bg: linear-gradient(135deg, #0f172a, #1e293b); }
+[data-theme="neon-pink"] { --primary: #f472b6; --accent: #fbcfe8; --bg: linear-gradient(135deg, #500724, #831843); }
+
+* { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
+body { 
+    margin: 0; font-family: 'Inter', sans-serif; color: #fff; background: var(--bg); 
+    height: 100vh; width: 100vw; overflow: hidden; transition: background 0.5s ease;
+}
+
+.page { display: none; height: 100vh; width: 100%; flex-direction: column; animation: fadeIn 0.3s ease; }
+.active { display: flex; }
+
+.title-container { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 25px; }
+.title-container h1 { color: var(--accent); font-family: 'Orbitron'; font-size: 24px; margin: 0; letter-spacing: 2px; }
+
+/* Components */
+.avatar-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 20px 0; }
+.avatar-opt { width: 100%; aspect-ratio: 1; border-radius: 50%; border: 2px solid transparent; cursor: pointer; transition: 0.2s; background: rgba(255,255,255,0.05); }
+.avatar-opt.selected { border-color: var(--accent); box-shadow: 0 0 15px var(--primary); transform: scale(1.1); }
+
+#messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; scroll-behavior: smooth; }
+.message { 
+    max-width: 80%; padding: 10px 14px; border-radius: 18px; font-size: 14px; line-height: 1.4;
+    position: relative; animation: msgPop 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+.message.sent { background: var(--primary); align-self: flex-end; border-bottom-right-radius: 4px; }
+.message.received { background: var(--glass); align-self: flex-start; border-bottom-left-radius: 4px; backdrop-filter: blur(10px); }
+
+.msg-meta { display: flex; align-items: center; justify-content: flex-end; font-size: 9px; margin-top: 5px; opacity: 0.6; gap: 8px; }
+.del-btn { background: none; border: none; color: #ff4d4d; cursor: pointer; padding: 2px; font-size: 11px; }
+
+.friend-card {
+    display: flex; justify-content: space-between; align-items: center; 
+    background: var(--glass); padding: 12px; border-radius: 18px; margin-bottom: 10px; cursor: pointer;
+    transition: transform 0.2s;
+}
+.friend-card:active { transform: scale(0.98); }
+
+#messageInputContainer { padding: 15px; display: flex; gap: 10px; background: rgba(0,0,0,0.8); backdrop-filter: blur(15px); }
+#messageInput { flex: 1; padding: 12px 20px; border-radius: 25px; border: none; background: var(--glass); color: #fff; }
+
+button { cursor: pointer; border-radius: 15px; padding: 10px 18px; border: none; background: var(--primary); color: #fff; font-weight: bold; }
+button.secondary { background: rgba(255,255,255,0.1); font-size: 11px; padding: 6px 12px; }
+.remove-btn { color: #ff4d4d; background: rgba(255, 77, 77, 0.1); border: 1px solid #ff4d4d; padding: 4px 8px; font-size: 10px; border-radius: 8px; }
+
+/* Status & Typing */
+.status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; background: #555; }
+.online { background: #00ff00; box-shadow: 0 0 8px #00ff00; }
+.typing-dots { display: none; align-items: center; gap: 4px; margin-top: 2px; }
+.typing-dots span { width: 5px; height: 5px; background: var(--accent); border-radius: 50%; animation: bounce 1.4s infinite ease-in-out; }
+
+/* Theme Modal */
+#themeModal {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); 
+    z-index: 2000; justify-content: center; align-items: center; backdrop-filter: blur(5px);
+}
+.theme-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; 
+    background: #111; padding: 25px; border-radius: 30px; width: 90%; max-width: 380px; border: 1px solid var(--glass);
+}
+
+@keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+@keyframes msgPop { from { opacity: 0; transform: translateY(10px) scale(0.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+</style>
+</head>
+<body>
+
+<audio id="sendSound" preload="auto"><source src="https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3" type="audio/mpeg"></audio>
+<audio id="receiveSound" preload="auto"><source src="https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3" type="audio/mpeg"></audio>
+
+<div id="themeModal" onclick="this.style.display='none'">
+    <div class="theme-grid" onclick="event.stopPropagation()">
+        <h3 style="grid-column: span 2; text-align: center; margin: 0 0 10px; font-family: 'Orbitron'; color: var(--accent);">THEMES</h3>
+        <button onclick="setTheme('default')" style="background:#9333ea">Original</button>
+        <button onclick="setTheme('cyber')" style="background:#004e92">Cyber</button>
+        <button onclick="setTheme('sunset')" style="background:#7c2d12">Sunset</button>
+        <button onclick="setTheme('forest')" style="background:#064e3b">Forest</button>
+        <button onclick="setTheme('ruby')" style="background:#881337">Ruby</button>
+        <button onclick="setTheme('ocean')" style="background:#0c4a6e">Ocean</button>
+        <button onclick="setTheme('gold')" style="background:#713f12">Gold</button>
+        <button onclick="setTheme('midnight')" style="background:#1e1b4b">Indigo</button>
+        <button onclick="setTheme('slate')" style="background:#1e293b">Slate</button>
+        <button onclick="setTheme('neon-pink')" style="background:#831843">Neon Pink</button>
+    </div>
+</div>
+
+<div id="loginPage" class="page active" style="justify-content: center; align-items: center; padding: 20px;">
+    <div class="login-card" style="width:100%; max-width:350px; text-align:center; background:var(--glass); padding:40px 30px; border-radius:30px; backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1);">
+        <div class="title-container">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="var(--accent)"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+            <h1>BHUIYAN CHAT</h1>
+        </div>
+        <input type="text" id="usernameInput" placeholder="Enter Username" style="width:100%; padding:15px; border-radius:15px; border:none; background:rgba(255,255,255,0.05); color:white; margin-bottom:15px; font-size:16px;">
+        <div class="avatar-grid" id="avatarPicker"></div>
+        <button onclick="login()" style="width:100%; padding:18px; font-family:'Orbitron'; font-size:16px;">LOG IN</button>
+    </div>
+</div>
+
+<div id="homePage" class="page" style="padding: 20px;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:25px;">
+        <div style="display:flex; align-items:center;">
+            <img id="myPfp" style="width:50px; height:50px; border-radius:50%; border:2px solid var(--primary); margin-right:15px;">
+            <h2 id="currentUserName" style="font-size:16px; margin:0; font-family:'Orbitron';"></h2>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <button onclick="document.getElementById('themeModal').style.display='flex'" class="secondary">THEME</button>
+            <button onclick="logout()" class="secondary">LOG OUT</button>
+        </div>
+    </div>
+    <div style="background:var(--glass); padding:15px; border-radius:20px; margin-bottom:20px;">
+        <div style="display:flex; gap:10px;">
+            <input type="text" id="friendInput" placeholder="Friend's Username..." style="flex:1; padding:12px; border-radius:12px; border:none; background:rgba(255,255,255,0.05); color:white;">
+            <button onclick="addFriend()">ADD</button>
+        </div>
+    </div>
+    <div id="friendList" style="flex:1; overflow-y:auto;"></div>
+</div>
+
+<div id="chatPage" class="page">
+    <div style="display:flex; align-items:center; padding:15px; background:rgba(0,0,0,0.7); border-bottom:1px solid var(--glass);">
+        <button onclick="backToHome()" style="background:none; border:none; font-size:24px; color:#fff; padding:0 10px 0 0;">←</button>
+        <img id="chatPartnerPfp" style="width:40px; height:40px; border-radius:50%; margin: 0 12px;">
+        <div style="flex:1;">
+            <div id="chatWithTitle" style="font-weight:bold; font-size:14px; font-family:'Orbitron';"></div>
+            <div id="typingStatus" class="typing-dots"><span></span><span></span><span></span></div>
+        </div>
+        <button onclick="clearChat()" class="secondary" style="color:#ff4d4d; border:1px solid #ff4d4d;">CLEAR</button>
+    </div>
+    <div id="messages"></div>
+    <div id="messageInputContainer">
+        <input type="text" id="messageInput" placeholder="Type message..." autocomplete="off">
+        <button onclick="sendMessage()">SEND</button>
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+    apiKey: "AIzaSyBeOAa7AyXCvhG8Me3rPJLbRa26Q3yzDD0",
+    authDomain: "bhuiyan-chat-53e86.firebaseapp.com",
+    databaseURL: "https://bhuiyan-chat-53e86-default-rtdb.firebaseio.com",
+    projectId: "bhuiyan-chat-53e86",
+    storageBucket: "bhuiyan-chat-53e86.appspot.com",
+    messagingSenderId: "509100356906",
+    appId: "1:509100356906:web:357d12fc14daae164da9a53"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const auth = firebase.auth();
+
+let currentUid='', currentUser='', activeChatUid='', selectedAvatar = 'https://api.dicebear.com/7.x/bottts-neutral/svg?seed=Felix', typingTimeout;
+
+function playSend() { document.getElementById('sendSound').currentTime = 0; document.getElementById('sendSound').play().catch(()=>{}); }
+function playReceive() { document.getElementById('receiveSound').currentTime = 0; document.getElementById('receiveSound').play().catch(()=>{}); }
+
+function setTheme(t) { document.body.setAttribute('data-theme', t); localStorage.setItem('bChatTheme', t); }
+
+const seeds = ['Felix','Max','Luna','Robo','Neon','Zelda','Morpheus','Ghost'];
+seeds.forEach(seed => {
+    const url = `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${seed}`;
+    const img = document.createElement('img');
+    img.src = url; img.className = 'avatar-opt' + (seed==='Felix'?' selected':'');
+    document.getElementById('avatarPicker').appendChild(img);
+    img.onclick = () => {
+        document.querySelectorAll('.avatar-opt').forEach(el=>el.classList.remove('selected'));
+        img.classList.add('selected'); selectedAvatar = url;
+    };
+});
+
+window.onload = () => {
+    const theme = localStorage.getItem('bChatTheme'); if(theme) setTheme(theme);
+    const sUid = localStorage.getItem('bChatUid'), sName = localStorage.getItem('bChatName'), sPfp = localStorage.getItem('bChatPfp');
+    if(sUid && sName) { currentUid = sUid; currentUser = sName; selectedAvatar = sPfp; startApp(); }
+};
+
+function login() {
+    const name = document.getElementById('usernameInput').value.trim();
+    if(!name) return;
+    auth.signInAnonymously().then(c => {
+        currentUid = c.user.uid; currentUser = name;
+        localStorage.setItem('bChatUid', currentUid); localStorage.setItem('bChatName', name); localStorage.setItem('bChatPfp', selectedAvatar);
+        db.ref('users/'+currentUid).set({ username: name, pfp: selectedAvatar });
+        startApp();
+    });
+}
+
+function startApp() {
+    document.getElementById('currentUserName').innerText = currentUser;
+    document.getElementById('myPfp').src = selectedAvatar;
+    showPage('homePage');
+    db.ref('status/'+currentUid).set({state: 'online'});
+    db.ref('status/'+currentUid).onDisconnect().set({state: 'offline'});
+    loadFriends();
+}
+
+function addFriend() {
+    const name = document.getElementById('friendInput').value.trim();
+    if(name === currentUser) return;
+    db.ref('users').orderByChild('username').equalTo(name).once('value', s => {
+        if(s.exists()) {
+            const fUid = Object.keys(s.val())[0];
+            db.ref(`friends/${currentUid}/${fUid}`).set(true);
+            db.ref(`friends/${fUid}/${currentUid}`).set(true);
+            document.getElementById('friendInput').value = '';
+        } else alert("User not found!");
+    });
+}
+
+function removeFriend(fUid, e) {
+    e.stopPropagation();
+    if(confirm("Remove this friend?")) {
+        db.ref(`friends/${currentUid}/${fUid}`).remove();
+        db.ref(`friends/${fUid}/${currentUid}`).remove();
+        // Stop any listeners related to this friend
+        db.ref('status/'+fUid).off();
+        db.ref('messages/' + [currentUid, fUid].sort().join('_')).off();
+    }
+}
+
+function loadFriends() {
+    db.ref('friends/'+currentUid).on('value', snap => {
+        const list = document.getElementById('friendList');
+        list.innerHTML = '';
+        Object.keys(snap.val() || {}).forEach(fUid => {
+            db.ref('users/' + fUid).once('value', userSnap => {
+                const p = userSnap.val();
+                if(!p) return;
+                const div = document.createElement('div');
+                div.className = "friend-card";
+                div.onclick = () => openChat(fUid, p.username, p.pfp);
+                div.innerHTML = `
+                    <div style="display:flex; align-items:center;">
+                        <img src="${p.pfp}" style="width:45px; height:45px; border-radius:50%; margin-right:15px;">
+                        <div>
+                            <div style="font-weight:bold; font-size:14px;"><span id="dot-${fUid}" class="status-dot"></span> ${p.username}</div>
+                            <div class="last-msg-preview" id="last-${fUid}" style="font-size:11px; opacity:0.6;">No messages...</div>
+                        </div>
+                    </div>
+                    <button class="remove-btn" onclick="removeFriend('${fUid}', event)">REMOVE</button>
+                `;
+                list.appendChild(div);
+                db.ref('status/'+fUid).on('value', s => {
+                    const d = document.getElementById('dot-'+fUid);
+                    if(d) s.val()?.state === 'online' ? d.classList.add('online') : d.classList.remove('online');
+                });
+                db.ref('messages/' + [currentUid, fUid].sort().join('_')).limitToLast(1).on('value', mSnap => {
+                    const el = document.getElementById('last-' + fUid);
+                    if(el && mSnap.exists()) {
+                        const m = Object.values(mSnap.val())[0];
+                        el.innerText = (m.senderUid === currentUid ? "You: " : "Them: ") + m.text;
+                    }
+                });
+            });
+        });
+    });
+}
+
+function openChat(uid, name, pfp) {
+    if (activeChatUid) {
+        const oldChatId = [currentUid, activeChatUid].sort().join('_');
+        db.ref('messages/' + oldChatId).off();
+        db.ref(`typing/${oldChatId}`).off();
+    }
+    activeChatUid = uid;
+    const chatId = [currentUid, uid].sort().join('_');
+    document.getElementById('chatWithTitle').innerText = name.toUpperCase();
+    document.getElementById('chatPartnerPfp').src = pfp;
+    showPage('chatPage');
+    const mDiv = document.getElementById('messages');
+    mDiv.innerHTML = ''; 
+    db.ref('messages/' + chatId).once('value', snap => {
+        mDiv.innerHTML = ''; 
+        snap.forEach(c => renderMsg(c.val(), c.key));
+        mDiv.scrollTop = mDiv.scrollHeight;
+    });
+    db.ref('messages/' + chatId).limitToLast(1).on('child_added', snap => {
+        if (!document.getElementById('msg-' + snap.key)) {
+            renderMsg(snap.val(), snap.key);
+            mDiv.scrollTop = mDiv.scrollHeight;
+            if(snap.val().senderUid !== currentUid) playReceive();
+        }
+    });
+    db.ref('messages/' + chatId).on('value', snap => { if(!snap.exists()) mDiv.innerHTML = ''; });
+    db.ref(`typing/${chatId}/${uid}`).on('value', s => { 
+        document.getElementById('typingStatus').style.display = s.val() ? 'flex' : 'none'; 
+    });
+}
+
+function renderMsg(m, id) {
+    if (document.getElementById('msg-' + id)) return;
+    const div = document.createElement('div');
+    div.id = 'msg-' + id;
+    div.className = `message ${m.senderUid === currentUid ? 'sent' : 'received'}`;
+    div.innerHTML = `
+        <div>${m.text}</div>
+        <div class="msg-meta">
+            ${new Date(m.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
+            ${m.senderUid === currentUid ? `<button class="del-btn" onclick="deleteMsg('${id}')">🗑️</button>` : ''}
+        </div>
+    `;
+    document.getElementById('messages').appendChild(div);
+}
+
+function sendMessage() {
+    const i = document.getElementById('messageInput');
+    const txt = i.value.trim();
+    if(!txt || !activeChatUid) return;
+    db.ref('messages/'+ [currentUid, activeChatUid].sort().join('_')).push({ 
+        senderUid: currentUid, text: txt, timestamp: Date.now() 
+    });
+    playSend();
+    i.value = '';
+}
+
+function deleteMsg(mId) {
+    if(confirm("Delete message?")) {
+        db.ref(`messages/${[currentUid, activeChatUid].sort().join('_')}/${mId}`).remove().then(() => {
+            document.getElementById('msg-'+mId)?.remove();
+        });
+    }
+}
+
+function clearChat() {
+    if(confirm("Clear for both?")) db.ref(`messages/${[currentUid, activeChatUid].sort().join('_')}`).remove();
+}
+
+document.getElementById('messageInput').oninput = () => {
+    if(!activeChatUid) return;
+    db.ref(`typing/${[currentUid, activeChatUid].sort().join('_')}/${currentUid}`).set(true);
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => db.ref(`typing/${[currentUid, activeChatUid].sort().join('_')}/${currentUid}`).set(false), 2000);
+};
+
+function showPage(p) { document.querySelectorAll('.page').forEach(el=>el.classList.remove('active')); document.getElementById(p).classList.add('active'); }
+
+function backToHome() { 
+    if (activeChatUid) {
+        const chatId = [currentUid, activeChatUid].sort().join('_');
+        db.ref('messages/' + chatId).off();
+        db.ref(`typing/${chatId}`).off();
+    }
+    activeChatUid=''; showPage('homePage'); 
+}
+
+function logout() { 
+    if(currentUid) db.ref('status/'+currentUid).set({state: 'offline'});
+    localStorage.clear(); location.reload(); 
+}
+
+document.getElementById('messageInput').onkeydown = (e) => { if(e.key === 'Enter') sendMessage(); };
+</script>
+</body>
